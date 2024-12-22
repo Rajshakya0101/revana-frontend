@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Bar } from "react-chartjs-2";
 import "chart.js/auto"; // Automatically imports necessary chart.js components
-import WordCloud from "react-wordcloud";
-import { AiOutlineLoading3Quarters } from "react-icons/ai"; // Import a spinner icon
+import WordCloud from "react-d3-cloud"; // Import react-d3-cloud for the word cloud
+import { AiOutlineLoading3Quarters } from "react-icons/ai"; // Spinner icon
 
 export default function SearchBar() {
   const [inputValue, setInputValue] = useState("");
@@ -10,9 +10,6 @@ export default function SearchBar() {
   const [modalContent, setModalContent] = useState(null);
   const [loading, setLoading] = useState(false); // For the loading state
   const [buttonText, setButtonText] = useState("Analyze"); // State for the button text
-
-  const urlRegex =
-    /^(https?:\/\/)?([\w\-]+\.)+[a-z]{2,}(\/[\w\-._~:\/?#[\]@!$&'()*+,;=]*)?$/i;
 
   const backendUrl = "https://backend-revana.onrender.com/scrape_reviews"; // Replace with your backend endpoint
 
@@ -23,22 +20,15 @@ export default function SearchBar() {
       return;
     }
 
-    // if (!urlRegex.test(inputValue)) {
-    //   setModalContent("Please enter a valid URL");
-    //   setIsModalOpen(true);
-    //   return;
-    // }
-
     setLoading(true); // Show loading state
     setButtonText("Loading..."); // Default loading message
 
     let timeoutId;
 
     try {
-      // Set timeout to show "Almost done, Stay tuned!" after 5 seconds
+      // Timeout for "Almost done, Stay tuned!" message
       timeoutId = setTimeout(() => {
-        console.log("Almost done, Stay tuned!");
-        setButtonText("Almost done, Stay tuned!"); // Change button text after 5 seconds
+        setButtonText("Almost done, Stay tuned!");
       }, 20000); // 20 seconds
 
       const response = await fetch(backendUrl, {
@@ -49,16 +39,14 @@ export default function SearchBar() {
         body: JSON.stringify({ url: inputValue }),
       });
 
-      clearTimeout(timeoutId); // Clear timeout if the response is received before 5 seconds
-      setButtonText("Analyze"); // Reset the button text to "Analyze" after response
+      clearTimeout(timeoutId);
+      setButtonText("Analyze");
 
       if (!response.ok) {
-        throw new Error("Failed to fetch data from the Server");
+        throw new Error("Failed to fetch data from the server");
       }
 
       const data = await response.json();
-      const { wordcloud_text, sentiment_distribution, rating_distribution } =
-        data;
 
       // Prepare modal content
       setModalContent(
@@ -83,8 +71,7 @@ export default function SearchBar() {
               </p>
               <p>
                 <strong className="text-2xl">
-                  {" "}
-                  {data.product_details["Product Price"]}{" "}
+                  {data.product_details["Product Price"]}
                 </strong>
               </p>
             </div>
@@ -103,17 +90,17 @@ export default function SearchBar() {
             <div className="mb-6">
               <h3 className="text-md mt-4 mb-2 font-semibold">Word Cloud</h3>
               <div className="h-[300px] border p-3 rounded-md">
-                <WordCloud
-                  options={{
-                    rotations: 2,
-                    rotationAngles: [-90, 0],
-                    fontSizes: [12, 50],
-                  }}
-                  words={data.wordcloud.split(" ").map((word) => ({
-                    text: word,
-                    value: Math.random() * 100,
-                  }))}
-                />
+                {data.wordcloud ? (
+                  <WordCloud
+                    data={generateWordCloudData(data.wordcloud)}
+                    fontSizeMapper={(word) => Math.log2(word.value) * 10}
+                    rotate={() => (Math.random() > 0.5 ? 0 : 90)}
+                    width={300}
+                    height={300}
+                  />
+                ) : (
+                  <p>No word cloud data available.</p>
+                )}
               </div>
             </div>
 
@@ -204,10 +191,23 @@ export default function SearchBar() {
       setModalContent("An error occurred while fetching data.");
       setIsModalOpen(true);
     } finally {
-      clearTimeout(timeoutId); // Ensure timeout is cleared in finally
+      clearTimeout(timeoutId);
       setLoading(false);
-      setButtonText("Analyze"); // Reset button text to default
+      setButtonText("Analyze");
     }
+  };
+
+  const generateWordCloudData = (wordcloudString) => {
+    const words = wordcloudString.split(/\s+/);
+    const wordFrequency = {};
+    words.forEach((word) => {
+      word = word.toLowerCase().replace(/[^a-z0-9]/gi, "");
+      if (word) wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+    });
+    return Object.entries(wordFrequency).map(([text, value]) => ({
+      text,
+      value,
+    }));
   };
 
   const closeModal = () => {
@@ -215,62 +215,30 @@ export default function SearchBar() {
     setModalContent(null);
   };
 
-  // Clear input field
   const clearInput = () => {
     setInputValue("");
   };
 
   return (
     <div className="flex justify-start w-full">
-      <label
-        className="relative w-full flex flex-col md:flex-row items-center justify-center border py-2 px-2 rounded-2xl gap-2 shadow-2xl focus-within:border-gray-300"
-        htmlFor="search-bar"
-      >
-        {/* Input field */}
+      <label className="relative w-full flex flex-col md:flex-row items-center justify-center border py-2 px-2 rounded-2xl gap-2 shadow-2xl focus-within:border-gray-300">
         <input
-          id="search-bar"
           placeholder="Paste your link here"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           className="px-6 py-2 w-full rounded-md flex-1 outline-none bg-white"
         />
-
-        {/* Cross button inside the input */}
         {inputValue && (
           <button
             className="relative right-2 top-2 transform -translate-y-1/2 text-gray-400 focus:outline-none"
             onClick={clearInput}
-            aria-label="Clear input"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 100 100"
-              width="15"
-              height="15"
-            >
-              <line
-                x1="10"
-                y1="10"
-                x2="90"
-                y2="90"
-                stroke="black"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-              <line
-                x1="90"
-                y1="10"
-                x2="10"
-                y2="90"
-                stroke="black"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="15" height="15">
+              <line x1="10" y1="10" x2="90" y2="90" stroke="black" strokeWidth="10" strokeLinecap="round" />
+              <line x1="90" y1="10" x2="10" y2="90" stroke="black" strokeWidth="10" strokeLinecap="round" />
             </svg>
           </button>
         )}
-
-        {/* Analyze button */}
         <button
           className="w-full md:w-auto px-6 py-3 bg-black hover:bg-white border-black text-white hover:text-black fill-white active:scale-95 duration-100 border-2 will-change-transform overflow-hidden relative rounded-xl transition-all disabled:opacity-70 focus:outline-none"
           onClick={handleAnalyze}
@@ -295,51 +263,34 @@ export default function SearchBar() {
 
       {isModalOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 focus:outline-none"
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
           onClick={closeModal}
         >
           <div
             className="bg-white rounded-lg shadow-lg p-6 text-center max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-
-            {/* Close Button (Cross) */}
-          <button
-            onClick={() => {closeModal(), clearInput()}}
-            className="absolute top-15 right-[21rem] hover:opacity-50 focus:outline-none"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 100 100"
-              width="20"
-              height="20"
+            <button
+              onClick={() => {
+                closeModal();
+                clearInput();
+              }}
+              className="absolute top-15 right-[21rem] hover:opacity-50"
             >
-              <line
-                x1="10"
-                y1="10"
-                x2="90"
-                y2="90"
-                stroke="black"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-              <line
-                x1="90"
-                y1="10"
-                x2="10"
-                y2="90"
-                stroke="black"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="20" height="20">
+                <line x1="10" y1="10" x2="90" y2="90" stroke="black" strokeWidth="10" strokeLinecap="round" />
+                <line x1="90" y1="10" x2="10" y2="90" stroke="black" strokeWidth="10" strokeLinecap="round" />
+              </svg>
+            </button>
 
             {modalContent}
             <br />
             <button
-              className="mt-4 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 focus:outline-none"
-              onClick={() => {closeModal(), clearInput()}}
+              className="mt-4 px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+              onClick={() => {
+                closeModal();
+                clearInput();
+              }}
             >
               Close
             </button>
