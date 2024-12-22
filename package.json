@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "deploy": "npm run deploy",
     "build": "vite build",
     "serve": "vite preview",
     "lint": "eslint .",
